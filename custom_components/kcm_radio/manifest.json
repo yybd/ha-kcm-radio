@@ -1,0 +1,14 @@
+{
+  "domain": "kcm_radio",
+  "name": "Kol Chai Music Radio",
+  "codeowners": ["@yybd"],
+  "config_flow": true,
+  "dependencies": ["media_source"],
+  "documentation": "https://github.com/yybd/ha-kcm-radio",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/yybd/ha-kcm-radio/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}

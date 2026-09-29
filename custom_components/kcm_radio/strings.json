@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kol Chai Music Radio",
+        "description": "Address of the kcm-radio-browser server.",
+        "data": { "url": "Server URL" }
+      }
+    },
+    "error": { "cannot_connect": "Could not reach a kcm-radio-browser server at this address." },
+    "abort": { "single_instance_allowed": "Already configured." }
+  }
+}

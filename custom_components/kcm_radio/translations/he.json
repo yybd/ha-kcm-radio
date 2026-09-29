@@ -1,0 +1,13 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "קול חי מיוזיק",
+        "description": "כתובת השרת של kcm-radio-browser.",
+        "data": { "url": "כתובת השרת" }
+      }
+    },
+    "error": { "cannot_connect": "לא נמצא שרת kcm-radio-browser בכתובת הזו." },
+    "abort": { "single_instance_allowed": "התוסף כבר מוגדר." }
+  }
+}
