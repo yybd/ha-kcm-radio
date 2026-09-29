@@ -58,15 +58,53 @@ The only field is the server address. The default, `https://kcm.bd-tech.net`, is
 
 ### 3. Add the card to a dashboard
 
-Edit a dashboard → **Add card** → search for **קול חי מיוזיק**. Or in YAML:
+The card is loaded automatically by the integration, so you don't need to add a resource. If the card doesn't show
+in the list right after installing, refresh the browser once (Ctrl+Shift+R).
+
+#### Option A: a dedicated dashboard for the radio (recommended)
+
+1. **Settings** → **Dashboards** → **+ Add dashboard** (bottom right) → **New dashboard from scratch**.
+2. Name: `קול חי מיוזיק`, icon: `mdi:radio` → **Create**. The dashboard appears in the side menu.
+3. Open the new dashboard → ✏️ (**Edit**, top right) → if it asks, choose **Start with an empty dashboard**.
+4. Click the pencil next to the view name (the tab at the top) → **View type**: **Panel (single card)** → **Save**.
+   A panel view spreads a single card across the whole screen, which is ideal for a grid of channels.
+5. **+ Add card** → search for `קול חי מיוזיק` → pick the card → **Save** → **Done**.
+
+#### Option B: add the card to an existing dashboard
+
+1. Open the dashboard → ✏️ **Edit** → **+ Add card** (in a *Sections* view: click **+** inside a section).
+2. Search for `קול חי מיוזיק` → pick the card → **Save**.
+3. Recommended: widen the card (in a *Sections* view: the **Layout** tab in the card editor → full width), because the
+   station grid adapts to the available width.
+
+#### Option C: YAML
+
+In the card editor choose **Show code editor**, or in the dashboard's *Raw configuration editor*:
 
 ```yaml
 type: custom:kcm-radio-card
 ```
 
-Tip: the card looks best in a view of type **Panel** (a single card across the whole width).
+A whole dashboard with a single panel view:
 
-The card is loaded automatically by the integration. You don't need to add a resource.
+```yaml
+title: קול חי מיוזיק
+views:
+  - title: קול חי מיוזיק
+    path: radio
+    type: panel
+    cards:
+      - type: custom:kcm-radio-card
+```
+
+#### Using the card
+
+1. Under **"לנגן ב:"** ("Play on:"), tap one or more players. The selected ones turn yellow. A green dot marks a
+   player that is already playing something.
+2. Tap a channel. It plays on every selected player, and a label on the channel shows where it is playing.
+3. **Stop** and the volume slider control the selected players.
+
+The selection is remembered per device, so the kitchen tablet can default to the kitchen speaker.
 
 ## Card options
 
