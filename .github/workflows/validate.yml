@@ -19,4 +19,6 @@ jobs:
         with:
           python-version: "3.14"
       - run: pip install pytest-homeassistant-custom-component
+      # the card needs the frontend integration, whose UI package the test harness does not ship
+      - run: pip install "$(python -c "import json,homeassistant.components.frontend as f,os;print([r for r in json.load(open(os.path.join(os.path.dirname(f.__file__),'manifest.json')))['requirements'] if 'frontend' in r][0])")"
       - run: pytest -q

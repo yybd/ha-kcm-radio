@@ -66,6 +66,10 @@ class KcmApi:
     async def async_station(self, uuid: str) -> dict[str, Any] | None:
         return next((s for s in await self.async_stations() if s["stationuuid"] == uuid), None)
 
+    async def async_nowplaying(self) -> list[dict[str, Any]]:
+        """What every station is playing right now (not cached)."""
+        return await self._get("/json/kcm/nowplaying")
+
     async def async_resolve(self, uuid: str) -> dict[str, Any]:
         """radio-browser /json/url/{uuid}: counts a listen and returns the stream URL."""
         data = await self._get(f"/json/url/{uuid}")

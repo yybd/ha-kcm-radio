@@ -48,6 +48,13 @@ def kcm_server(aioclient_mock):
         json={"ok": True, "stationuuid": "s-ribo", "url": "https://live.kcm.fm/39"},
     )
     aioclient_mock.get(f"{URL}/json/url/missing", json={"ok": False, "message": "did not find station"})
+    aioclient_mock.get(
+        f"{URL}/json/kcm/nowplaying",
+        json=[
+            {"stationuuid": "s-ribo", "raw": "ישי ריבו - סיבת הסיבות", "artist": "ישי ריבו", "title": "סיבת הסיבות", "stale": False},
+            {"stationuuid": "s-live", "raw": "old", "artist": "", "title": "old", "stale": True},
+        ],
+    )
     return aioclient_mock
 
 

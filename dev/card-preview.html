@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="he">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>kcm-radio-card preview</title>
+<style>
+  :root { --primary-text-color:#e1e1e1; --secondary-text-color:#9b9b9b; --card-background-color:#1c1c1c;
+          --secondary-background-color:#282828; --divider-color:#3a3a3a; --success-color:#43a047; }
+  body { background:#111; margin:0; padding:16px; font-family: Roboto, system-ui, sans-serif; color:var(--primary-text-color); }
+  ha-card { display:block; background:var(--card-background-color); border-radius:12px; }
+  #log { font: 12px monospace; color:#8f8; white-space:pre-wrap; margin-top:12px; }
+</style>
+</head>
+<body>
+<!-- Dev harness: a fake `hass` so the card can be looked at without a running Home Assistant.
+     Stations come live from the kcm-radio-browser server; service calls are only logged. -->
+<kcm-radio-card id="card"></kcm-radio-card>
+<div id="log"></div>
+<script src="../custom_components/kcm_radio/frontend/kcm-radio-card.js"></script>
+<script>
+  const SERVER = new URLSearchParams(location.search).get('server') || 'https://kcm.bd-tech.net';
+  const log = (m) => (document.getElementById('log').textContent += m + '\n');
+  const states = {
+    'media_player.living_room': { entity_id: 'media_player.living_room', state: 'idle', attributes: { friendly_name: 'סלון', volume_level: 0.4 } },
+    'media_player.kitchen': { entity_id: 'media_player.kitchen', state: 'playing', attributes: { friendly_name: 'מטבח', volume_level: 0.6 } },
+    'media_player.bedroom': { entity_id: 'media_player.bedroom', state: 'off', attributes: { friendly_name: 'חדר שינה' } },
+    'media_player.broken': { entity_id: 'media_player.broken', state: 'unavailable', attributes: { friendly_name: 'לא זמין' } },
+  };
+  const song = (n) => (!n || n.stale || !n.raw ? '' : n.artist && n.title ? `${n.artist} – ${n.title}` : n.raw);
+  const hass = {
+    states,
+    async callWS(msg) {
+      if (msg.type === 'kcm_radio/stations') {
+        const [st, cats] = await Promise.all([fetch(SERVER + '/json/kcm/stations').then((r) => r.json()), fetch(SERVER + '/json/kcm/categories').then((r) => r.json())]);
+        st.sort((a, b) => (b.kcm.order || 0) - (a.kcm.order || 0) || a.kcm.title.localeCompare(b.kcm.title));
+        return {
+          categories: cats.filter((c) => c.stationcount).sort((a, b) => (a.id === 0) - (b.id === 0) || a.id - b.id),
+          stations: st.map((s) => ({ uuid: s.stationuuid, title: s.kcm.title, category: s.kcm.category.slug, image: s.favicon, description: s.kcm.description, nowplaying: song(s.kcm.nowplaying) })),
+        };
+      }
+      if (msg.type === 'kcm_radio/nowplaying') {
+        const np = await fetch(SERVER + '/json/kcm/nowplaying').then((r) => r.json());
+        return Object.fromEntries(np.map((n) => [n.stationuuid, song(n)]));
+      }
+    },
+    async callService(domain, service, data) {
+      log(`${domain}.${service} ${JSON.stringify(data)}`);
+      const ids = [].concat(data.entity_id);
+      for (const id of ids) {
+        const cur = states[id];
+        const next = { ...cur, attributes: { ...cur.attributes } };
+        if (service === 'play_media') next.state = 'playing';
+        if (service === 'media_stop') next.state = 'idle';
+        if (service === 'volume_set') next.attributes.volume_level = data.volume_level;
+        states[id] = next;
+      }
+      card.hass = { ...hass, states: { ...states } };
+    },
+  };
+  const card = document.getElementById('card');
+  card.setConfig({});
+  card.hass = hass;
+</script>
+</body>
+</html>
