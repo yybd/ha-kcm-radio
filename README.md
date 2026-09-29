@@ -99,29 +99,54 @@ views:
 
 #### Using the card
 
-1. Under **"לנגן ב:"** ("Play on:"), tap one or more players. The selected ones turn yellow. A green dot marks a
-   player that is already playing something.
+1. Tap the player button (🔈) and tick one or more players in the list. The list shows which players are already
+   playing something.
 2. Tap a channel. It plays on every selected player, and a label on the channel shows where it is playing.
-3. **Stop** and the volume slider control the selected players.
+3. The round button stops (■) or plays the last station again (▶), and the slider sets the volume of the selected
+   players.
 
 The selection is remembered per device, so the kitchen tablet can default to the kitchen speaker.
 
 ## Card options
 
+The easiest way is the **visual editor**: in edit mode, click the card. There you can:
+
+- **Players:** tick which players appear in the player picker (hide the ones you don't need).
+- **Categories:** hide whole categories. Categories with no stations are hidden automatically, and with a single
+  category the tabs disappear altogether.
+- **Stations:** *all stations* (untick to hide), or *only the stations I tick* for a short list of favorites. There's
+  a filter box to find a station quickly.
+- **Title and height.**
+
+Or in YAML:
+
 | Option | Default | Description |
 |---|---|---|
 | `title` | `קול חי מיוזיק` | Card title |
-| `entities` | all available players | Limit the player list to these players |
+| `height` | `560px`; in a panel view, the full screen | Card height. The header stays fixed and only the stations scroll |
+| `entities` | all players | Show only these players |
+| `hide_entities` | none | Hide these players |
+| `categories` | all | Show only these categories (`styles`, `mood`, `artists`, `special`, or the Hebrew name) |
+| `hide_categories` | none | Hide these categories |
+| `stations` | all | Show only these stations (`stationuuid` or the station name) |
+| `hide_stations` | none | Hide these stations |
 
 ```yaml
 type: custom:kcm-radio-card
-title: מוזיקה בבית
-entities:
-  - media_player.living_room
-  - media_player.kitchen
+title: מוזיקה במטבח
+height: 420px
+hide_entities:
+  - media_player.office
+hide_categories:
+  - special
+stations:            # just a few stations
+  - ישי ריבו
+  - אברהם פריד
+  - שידור חי
 ```
 
-The players you selected are remembered per device (browser/phone).
+The players you selected are remembered per device (browser/phone). The play/stop button plays the last station
+you chose on the selected players again, or stops them if they're playing.
 
 ## Playing from an automation
 
