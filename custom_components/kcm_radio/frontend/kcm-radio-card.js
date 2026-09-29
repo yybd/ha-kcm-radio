@@ -98,6 +98,7 @@ class KcmRadioCard extends HTMLElement {
     if (!this._root) return; // setConfig always comes first; nothing to draw into yet
     if (first) this._loadStations();
     this._renderPlayersAndControls();
+    this._updateActive();
   }
 
   getCardSize() {
@@ -212,7 +213,7 @@ class KcmRadioCard extends HTMLElement {
     } catch (err) {
       this._toast(`שגיאה: ${err.message || err}`);
     }
-    this._renderGrid();
+    this._updateActive();
     this._renderControls(true);
   }
 
@@ -221,7 +222,7 @@ class KcmRadioCard extends HTMLElement {
     if (!targets.length) return;
     await this._hass.callService('media_player', 'media_stop', { entity_id: targets }).catch(() => {});
     targets.forEach((id) => this._playing.delete(id));
-    this._renderGrid();
+    this._updateActive();
   }
 
   // One button: stop when a selected player is playing, otherwise play the last station again.
@@ -392,25 +393,38 @@ class KcmRadioCard extends HTMLElement {
         (this._tab === 'all' || s.category === this._tab) &&
         (!q || `${s.title} ${s.nowplaying} ${s.description}`.toLowerCase().includes(q)),
     );
+    grid.innerHTML = list.length
+      ? list
+          .map((s) => `<button class="tile" data-uuid="${s.uuid}" title="${esc(s.title)}">
+              <span class="art"><img src="${esc(s.image)}" alt="" loading="lazy">
+                <span class="hover">${PLAY_ICON}</span><span class="badge">${EQ_ICON}<span></span></span>
+              </span>
+              <span class="title">${esc(s.title)}</span>
+              <span class="np">${esc(s.nowplaying || s.description)}</span>
+            </button>`)
+          .join('')
+      : '<div class="empty">לא נמצאו ערוצים</div>';
+    this._activeKey = null;
+    this._updateActive();
+  }
+
+  // Which station plays where — patched onto the existing tiles, so playing a station never rebuilds the
+  // grid (that reloaded every image and made the card flash).
+  _updateActive() {
+    if (!this._root || !this._hass) return;
     const playingOn = new Map();
     for (const [id, uuid] of this._playing) {
       if (this._hass.states[id]?.state !== 'playing') continue;
       playingOn.set(uuid, [...(playingOn.get(uuid) || []), this._name(id)]);
     }
-    grid.innerHTML = list.length
-      ? list
-          .map((s) => {
-            const on = playingOn.get(s.uuid);
-            return `<button class="tile${on ? ' active' : ''}" data-uuid="${s.uuid}" title="${esc(s.title)}">
-              <span class="art"><img src="${esc(s.image)}" alt="" loading="lazy">
-                ${on ? `<span class="badge">${EQ_ICON}<span>${esc(on.join(', '))}</span></span>` : `<span class="hover">${PLAY_ICON}</span>`}
-              </span>
-              <span class="title">${esc(s.title)}</span>
-              <span class="np">${esc(s.nowplaying || s.description)}</span>
-            </button>`;
-          })
-          .join('')
-      : '<div class="empty">לא נמצאו ערוצים</div>';
+    const key = [...playingOn].map(([uuid, names]) => `${uuid}:${names.join()}`).join('|');
+    if (key === this._activeKey) return;
+    this._activeKey = key;
+    for (const tile of this._root.querySelectorAll('.grid .tile')) {
+      const names = playingOn.get(tile.dataset.uuid);
+      tile.classList.toggle('active', !!names);
+      tile.querySelector('.badge > span').textContent = names ? names.join(', ') : '';
+    }
   }
 }
 
@@ -498,6 +512,7 @@ const STYLE = `
   .hover { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.28); opacity: 0; transition: opacity .15s; }
   .hover svg { width: 40px; height: 40px; padding: 10px; border-radius: 50%; background: var(--kcm-accent); color: var(--kcm-accent-ink); box-sizing: border-box; }
   .tile:hover .hover { opacity: 1; }
+  .tile.active .hover, .tile:not(.active) .badge { display: none; }
   .badge { position: absolute; inset-inline: 6px; bottom: 6px; display: flex; align-items: center; gap: 4px; padding: 3px 8px; border-radius: 999px;
     font-size: 11px; font-weight: 600; background: var(--kcm-accent); color: var(--kcm-accent-ink); }
   .badge span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
