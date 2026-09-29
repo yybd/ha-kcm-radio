@@ -1,20 +1,23 @@
 """Kol Chai Music Radio — browse and play the kcm.fm "Music Volume" channels on any media player.
 
 - media_source.py: Media → קול חי מיוזיק → category → station
-- frontend/kcm-radio-card.js: a dashboard card (loaded automatically) that plays stations on one or more players
+- frontend/kcm-radio-card.js: a dashboard card (registered as a Lovelace resource automatically) that plays
+  stations on one or more players
 - websocket commands kcm_radio/stations and kcm_radio/nowplaying feed that card through HA itself
 """
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Any
 
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
-from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
+from homeassistant.components.lovelace.const import LOVELACE_DATA
+from homeassistant.components.lovelace.resources import ResourceStorageCollection
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryNotReady
@@ -24,6 +27,8 @@ from homeassistant.loader import async_get_integration
 
 from .api import KcmApi, KcmApiError
 from .const import CONF_URL, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
 
 type KcmConfigEntry = ConfigEntry[KcmApi]
 
@@ -37,10 +42,43 @@ async def async_setup(hass: HomeAssistant, config: dict[str, Any]) -> bool:
     version = (await async_get_integration(hass, DOMAIN)).version
     await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(CARD_FILE), cache_headers=False)])
     # ?v= busts the browser cache on every update
-    add_extra_js_url(hass, f"{CARD_URL}?v={version}")
+    await _async_ensure_card_resource(hass, f"{CARD_URL}?v={version}")
     websocket_api.async_register_command(hass, ws_stations)
     websocket_api.async_register_command(hass, ws_nowplaying)
     return True
+
+
+async def _async_ensure_card_resource(hass: HomeAssistant, url: str) -> None:
+    """Register the card as a Lovelace module resource (or bump its version).
+
+    Not add_extra_js_url: extra modules run before the frontend swaps in its own customElements registry
+    (HA 2026.8+), so a card defined there is invisible to dashboards and they hang on a spinner.
+    Resources load after that, like every HACS card.
+    """
+    data = hass.data.get(LOVELACE_DATA)
+    resources = data.resources if data else None
+    if not isinstance(resources, ResourceStorageCollection):
+        _LOGGER.warning("Dashboard resources are in YAML mode: add %s as a module resource by hand", CARD_URL)
+        return
+    await resources.async_get_info()  # loads the collection from storage
+    for item in resources.async_items():
+        if item["url"].split("?")[0] == CARD_URL:
+            if item["url"] != url:
+                await resources.async_update_item(item["id"], {"res_type": "module", "url": url})
+            return
+    await resources.async_create_item({"res_type": "module", "url": url})
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: KcmConfigEntry) -> None:
+    """Removing the integration also removes the card resource it added."""
+    data = hass.data.get(LOVELACE_DATA)
+    resources = data.resources if data else None
+    if not isinstance(resources, ResourceStorageCollection):
+        return
+    await resources.async_get_info()
+    for item in list(resources.async_items()):
+        if item["url"].split("?")[0] == CARD_URL:
+            await resources.async_delete_item(item["id"])
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: KcmConfigEntry) -> bool:

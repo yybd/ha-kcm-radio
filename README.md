@@ -58,8 +58,8 @@ The only field is the server address. The default, `https://kcm.bd-tech.net`, is
 
 ### 3. Add the card to a dashboard
 
-The card is loaded automatically by the integration, so you don't need to add a resource. If the card doesn't show
-in the list right after installing, refresh the browser once (Ctrl+Shift+R).
+The integration registers the card as a dashboard resource automatically, so you don't need to add anything by hand. If the
+card doesn't show in the list right after installing, refresh the browser once (Ctrl+Shift+R).
 
 #### Option A: a dedicated dashboard for the radio (recommended)
 
