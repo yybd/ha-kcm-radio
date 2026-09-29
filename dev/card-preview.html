@@ -59,8 +59,11 @@
     },
   };
   const card = document.getElementById('card');
+  // HA calls setConfig more than once — do the same here so a regression shows up in the preview
   card.setConfig({});
   card.hass = hass;
+  card.setConfig({});
+  card.hass = { ...hass };
 </script>
 </body>
 </html>

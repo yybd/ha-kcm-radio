@@ -24,20 +24,32 @@ class KcmRadioCard extends HTMLElement {
     return {};
   }
 
-  setConfig(config) {
-    this._config = { title: 'קול חי מיוזיק', ...config };
+  constructor() {
+    super();
     this._tab = 'all';
     this._query = '';
-    this._selected = new Set(load(STORAGE_KEY, config.entities?.slice(0, 1) || []));
     this._playing = new Map(); // entity_id -> station uuid (what this card last started there)
     this._stations = null;
-    this._built = false;
+  }
+
+  // HA calls setConfig more than once (card creation, editor, config changes): keep the DOM and state,
+  // only apply the new options.
+  setConfig(config) {
+    this._config = { title: 'קול חי מיוזיק', ...config };
+    if (!this._selected) this._selected = new Set(load(STORAGE_KEY, config.entities?.slice(0, 1) || []));
+    if (!this._root) this._build();
+    this._root.querySelector('h2').textContent = this._config.title;
+    this._playersKey = this._controlsKey = null; // `entities` may have changed
+    if (this._hass) {
+      this._renderPlayers();
+      this._renderControls();
+    }
   }
 
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    if (!this._built) this._build();
+    if (!this._root) return; // setConfig always comes first; nothing to draw into yet
     if (first) this._loadStations();
     this._renderPlayers();
     this._renderControls();
@@ -146,14 +158,13 @@ class KcmRadioCard extends HTMLElement {
   // ------------------------------------------------------------------ rendering
 
   _build() {
-    this._built = true;
-    this._root = this.attachShadow({ mode: 'open' });
+    this._root = this.shadowRoot || this.attachShadow({ mode: 'open' });
     this._root.innerHTML = `
       <style>${STYLE}</style>
       <ha-card>
         <div class="wrap" dir="rtl">
           <div class="head">
-            <div class="brand"><span class="mark">${EQ_ICON}</span><h2>${esc(this._config.title)}</h2></div>
+            <div class="brand"><span class="mark">${EQ_ICON}</span><h2></h2></div>
             <input class="search" type="search" placeholder="חיפוש ערוץ או שיר…">
           </div>
           <div class="section-label">לנגן ב:</div>
