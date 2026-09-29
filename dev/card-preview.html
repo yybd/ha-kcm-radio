@@ -47,6 +47,12 @@
     async callService(domain, service, data) {
       log(`${domain}.${service} ${JSON.stringify(data)}`);
       const ids = [].concat(data.entity_id);
+      // real speakers take a moment to report the new state — simulate it (?delay=ms, default 2000)
+      await new Promise((r) => setTimeout(r, 50));
+      setTimeout(() => apply(ids, service, data), Number(new URLSearchParams(location.search).get('delay') ?? 2000));
+    },
+  };
+  function apply(ids, service, data) {
       for (const id of ids) {
         const cur = states[id];
         const next = { ...cur, attributes: { ...cur.attributes } };
@@ -56,8 +62,7 @@
         states[id] = next;
       }
       card.hass = { ...hass, states: { ...states } };
-    },
-  };
+  }
   const card = document.getElementById('card');
   // HA calls setConfig more than once — do the same here so a regression shows up in the preview
   card.setConfig({});

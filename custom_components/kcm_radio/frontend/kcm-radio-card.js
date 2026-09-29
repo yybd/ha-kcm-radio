@@ -97,6 +97,7 @@ class KcmRadioCard extends HTMLElement {
     this._hass = hass;
     if (!this._root) return; // setConfig always comes first; nothing to draw into yet
     if (first) this._loadStations();
+    this._checkPending();
     this._renderPlayersAndControls();
     this._updateActive();
   }
@@ -193,6 +194,7 @@ class KcmRadioCard extends HTMLElement {
   // ------------------------------------------------------------------ actions
 
   async _play(uuid) {
+    if (this._pending) return; // one command at a time — the button/tile shows it is waiting
     const targets = this._targets();
     if (!targets.length) {
       this._toast('בחרו קודם נגן');
@@ -200,6 +202,7 @@ class KcmRadioCard extends HTMLElement {
       return;
     }
     const station = this._stations?.find((s) => s.uuid === uuid);
+    this._setPending({ expect: 'playing', targets, uuid });
     try {
       await this._hass.callService('media_player', 'play_media', {
         entity_id: targets,
@@ -211,26 +214,84 @@ class KcmRadioCard extends HTMLElement {
       save(LAST_STATION_KEY, uuid);
       if (station) this._toast(`${station.title} · ${targets.map((id) => this._name(id)).join(', ')}`);
     } catch (err) {
+      this._clearPending();
       this._toast(`שגיאה: ${err.message || err}`);
     }
     this._updateActive();
-    this._renderControls(true);
   }
 
   async _stop() {
+    if (this._pending) return;
     const targets = this._targets();
     if (!targets.length) return;
-    await this._hass.callService('media_player', 'media_stop', { entity_id: targets }).catch(() => {});
-    targets.forEach((id) => this._playing.delete(id));
+    this._setPending({ expect: 'stopped', targets });
+    try {
+      await this._hass.callService('media_player', 'media_stop', { entity_id: targets });
+      targets.forEach((id) => this._playing.delete(id));
+    } catch (err) {
+      this._clearPending();
+      this._toast(`שגיאה: ${err.message || err}`);
+    }
     this._updateActive();
   }
 
   // One button: stop when a selected player is playing, otherwise play the last station again.
   _playStop() {
+    if (this._pending) return;
     const targets = this._targets();
     if (targets.some((id) => this._hass.states[id].state === 'playing')) this._stop();
     else if (this._lastStation) this._play(this._lastStation);
     else this._toast('בחרו תחנה מהרשימה');
+  }
+
+  // ------------------------------------------------------------------ pending feedback
+  // From the tap until the player reports the new state: the button (and the tapped station) show a
+  // spinner and ignore further taps. Cleared by the next matching hass update, or after 15s.
+
+  _setPending({ expect, targets, uuid = null }) {
+    // remember each player's state object: HA replaces it on every change, so a new object = the player reacted
+    const before = new Map(targets.map((id) => [id, this._hass.states[id]]));
+    this._pending = { expect, targets, uuid, before };
+    clearTimeout(this._pendingTimer);
+    this._pendingTimer = setTimeout(() => {
+      if (!this._pending) return;
+      this._clearPending();
+      this._toast(expect === 'playing' ? 'הנגן לא התחיל לנגן — נסו שוב' : 'הנגן לא הגיב לעצירה');
+    }, 15000);
+    this._renderPending();
+  }
+
+  _clearPending() {
+    this._pending = null;
+    clearTimeout(this._pendingTimer);
+    this._renderPending();
+    this._renderControls(true);
+  }
+
+  _checkPending() {
+    const p = this._pending;
+    if (!p) return;
+    const states = p.targets.map((id) => this._hass.states[id]).filter(Boolean);
+    const done =
+      p.expect === 'playing'
+        ? states.some((st) => st.state === 'playing' && st !== p.before.get(st.entity_id))
+        : states.every((st) => st.state !== 'playing');
+    if (done) this._clearPending();
+  }
+
+  _renderPending() {
+    if (!this._root) return;
+    const p = this._pending;
+    const btn = this._root.querySelector('.playstop');
+    btn.classList.toggle('pending', !!p);
+    if (p) {
+      btn.innerHTML = '<span class="spinner"></span>';
+      btn.disabled = true;
+      btn.title = p.expect === 'playing' ? 'מפעיל…' : 'עוצר…';
+    }
+    this._root.querySelector('.grid').classList.toggle('busy', !!p);
+    for (const tile of this._root.querySelectorAll('.tile.pending')) tile.classList.remove('pending');
+    if (p?.uuid) this._root.querySelector(`.tile[data-uuid="${p.uuid}"]`)?.classList.add('pending');
   }
 
   _setVolume(value) {
@@ -351,6 +412,7 @@ class KcmRadioCard extends HTMLElement {
   }
 
   _renderControls(force = false) {
+    if (this._pending) return;
     const targets = this._targets().map((id) => this._hass.states[id]);
     const vols = targets.map((t) => t.attributes.volume_level).filter((v) => typeof v === 'number');
     const anyPlaying = targets.some((t) => t.state === 'playing');
@@ -406,6 +468,7 @@ class KcmRadioCard extends HTMLElement {
       : '<div class="empty">לא נמצאו ערוצים</div>';
     this._activeKey = null;
     this._updateActive();
+    if (this._pending) this._renderPending();
   }
 
   // Which station plays where — patched onto the existing tiles, so playing a station never rebuilds the
@@ -487,6 +550,15 @@ const STYLE = `
   .controls { display: flex; align-items: center; gap: 10px; flex: none; }
   .icon-btn { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--kcm-accent); color: var(--kcm-accent-ink); }
   .icon-btn svg { width: 20px; height: 20px; }
+  .icon-btn.pending { cursor: progress; }
+  .icon-btn.pending:disabled { background: var(--kcm-accent); color: var(--kcm-accent-ink); opacity: .75; }
+  .spinner { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid currentColor; border-top-color: transparent;
+    animation: kcm-spin .8s linear infinite; box-sizing: border-box; }
+  @keyframes kcm-spin { to { transform: rotate(360deg); } }
+  .grid.busy .tile { cursor: progress; }
+  .tile.pending .art::after { content: ''; position: absolute; inset: 0; background: rgba(0,0,0,.45) center / 38px no-repeat
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 50 50'%3E%3Ccircle cx='25' cy='25' r='20' fill='none' stroke='%23fec409' stroke-width='5' stroke-linecap='round' stroke-dasharray='90 40'%3E%3CanimateTransform attributeName='transform' type='rotate' from='0 25 25' to='360 25 25' dur='0.8s' repeatCount='indefinite'/%3E%3C/circle%3E%3C/svg%3E"); }
+  .tile.pending .hover, .tile.pending .badge { display: none; }
   .icon-btn:disabled { background: var(--secondary-background-color); color: var(--disabled-text-color, #999); cursor: default; }
   .vol { display: flex; align-items: center; gap: 6px; color: var(--secondary-text-color); }
   .vol[hidden] { display: none; }
