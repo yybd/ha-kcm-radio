@@ -336,8 +336,9 @@ if (!customElements.get('kcm-radio-card')) {
   window.customCards = window.customCards || [];
   window.customCards.push({
     type: 'kcm-radio-card',
-    name: 'קול חי מיוזיק',
-    description: 'כל ערוצי מיוזיק ווליום — בחירת נגנים והפעלה בלחיצה',
+    // both languages, so the card picker finds it by "קול חי", "kol chai" or "kcm"
+    name: 'קול חי מיוזיק – Kol Chai Music',
+    description: 'כל ערוצי מיוזיק ווליום — בחירת נגנים והפעלה בלחיצה. KCM radio: play any station on one or more players.',
     preview: false,
   });
 }
