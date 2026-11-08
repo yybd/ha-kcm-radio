@@ -2,7 +2,7 @@
 
     .venv/bin/python scripts/ha_ws.py '{"type": "get_config"}' ['{...}' ...]
 
-Reads url + token from $HA_KEY_FILE or $KEYS_ROOT/home-assistant/api_key.json.
+Reads url + token from $HA_KEY_FILE or $KEYS_ROOT/services/home-assistant/api_key.json.
 Prints each result as JSON.
 """
 
