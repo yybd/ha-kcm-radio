@@ -2,7 +2,7 @@
 
     .venv/bin/python scripts/ha_ws.py '{"type": "get_config"}' ['{...}' ...]
 
-Reads url + token from $HA_KEY_FILE or ~/Developer/myData/home-assistant/api_key.json.
+Reads url + token from $HA_KEY_FILE or $KEYS_ROOT/home-assistant/api_key.json.
 Prints each result as JSON.
 """
 
@@ -13,7 +13,7 @@ import sys
 
 import aiohttp
 
-KEY_FILE = os.environ.get("HA_KEY_FILE", os.path.expanduser("~/Developer/myData/home-assistant/api_key.json"))
+KEY_FILE = os.environ.get("HA_KEY_FILE", os.path.join(os.environ.get("KEYS_ROOT", os.path.expanduser("~/Developer/myData")), "home-assistant/api_key.json"))
 
 
 async def main(commands):
