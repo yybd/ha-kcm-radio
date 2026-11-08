@@ -13,7 +13,7 @@ import sys
 
 import aiohttp
 
-KEY_FILE = os.environ.get("HA_KEY_FILE", os.path.join(os.environ.get("KEYS_ROOT", os.path.expanduser("~/Developer/_myData")), "home-assistant/api_key.json"))
+KEY_FILE = os.environ.get("HA_KEY_FILE", os.path.join(os.environ.get("KEYS_ROOT", os.path.expanduser("~/Developer/_myData")), "services/home-assistant/api_key.json"))
 
 
 async def main(commands):
